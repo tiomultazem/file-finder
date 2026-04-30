@@ -52,12 +52,15 @@ def copy_files():
         start_date = end_date = None
 
     file_list = []
+    found_set = set()
+    req_map = {req.lower(): req for req in reqStrings}  # mapping lowercase ke aslinya
+    not_found = set(req_map.keys())
+
     for root_dir, _, files in os.walk(srcDir):
         for file in files:
             full_path = os.path.join(root_dir, file)
             file_lower = file.lower()
 
-            # Penyesuaian logika: jika kolom nama kosong, match semua
             if not reqStrings:
                 match = True
             elif use_exact:
@@ -70,7 +73,16 @@ def copy_files():
                     created = os.path.getctime(full_path)
                     if not (start_date <= created <= end_date):
                         continue
+
                 file_list.append(full_path)
+
+                # Cek item yang ditemukan
+                for req_lower in req_map:
+                    if (file_lower == req_lower if use_exact else req_lower in file_lower):
+                        found_set.add(req_lower)
+
+    # Update not_found berdasarkan yang tidak ditemukan
+    not_found -= found_set
 
     total = len(file_list)
     if total == 0:
@@ -102,16 +114,25 @@ def copy_files():
     elapsed = end_time - start_time
 
     messagebox.showinfo("Selesai", f"{len(copied_files)} file diproses:\n\n" + "\n".join(copied_files))
+
+    if not_found:
+        messagebox.showwarning("Nama Tidak Ditemukan", "Berikut nama yang tidak ditemukan:\n\n" +
+                       "\n".join([req_map[n] for n in sorted(not_found)]))
+                       
     progress_bar["value"] = 0
     label_duration.config(text=f"Selesai dalam {elapsed:.2f} detik")
 
 # Setup window
 root = tk.Tk()
 root.title("File Finder")
-
+def resource_path(rel_path):
+    import sys
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, rel_path)
+    return rel_path
 # Logo
 try:
-    logo_img = PhotoImage(file="logo.png")
+    logo_img = PhotoImage(file=resource_path("logo.png"))
     root.iconphoto(True, logo_img)
     logo_label = tk.Label(root, image=logo_img)
     logo_label.grid(row=0, column=0, columnspan=3, pady=(10, 0))
